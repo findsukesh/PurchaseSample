@@ -182,7 +182,7 @@ resource serviceBusNs 'Microsoft.ServiceBus/namespaces@2022-10-01-preview' = {
 }
 
 // Error notification queue — replaces the BizTalk one-way
-// PurchaseProductUnavilableErrorResponsePort send port
+// PurchaseProductUnavailableErrorResponsePort send port
 resource serviceBusQueue 'Microsoft.ServiceBus/namespaces/queues@2022-10-01-preview' = {
   parent: serviceBusNs
   name: serviceBusQueueName
