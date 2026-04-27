@@ -1,0 +1,20 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ErrorSchema",
+  "description": "Schema for an error response (converted from ErrorSchema.xsd, namespace http://PurchaseFlowSchemas.ErrorSchema)",
+  "type": "object",
+  "properties": {
+    "Code": {
+      "type": "string",
+      "default": "-",
+      "description": "Error code. Known values: 0 (success), 1001 (invalid customer), 1002 (invalid product), 1003 (product not available)"
+    },
+    "Message": {
+      "type": "string",
+      "default": "-",
+      "description": "Human-readable error message"
+    }
+  },
+  "required": ["Code", "Message"],
+  "additionalProperties": false
+}

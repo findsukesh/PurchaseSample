@@ -2,3 +2,6 @@
 _ReSharper.PurchaseSample
 */bin
 */obj
+
+# Logic App local development settings (contains connection string placeholders)
+local.settings.json

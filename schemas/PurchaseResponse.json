@@ -1,0 +1,32 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PurchaseResponse",
+  "description": "Schema for a successful purchase response (converted from PurchaseResponse.xsd, namespace http://PurchaseFlow.Schemas.PurchaseResponse)",
+  "type": "object",
+  "properties": {
+    "customerId": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 0,
+      "description": "The unique identifier of the customer"
+    },
+    "price": {
+      "type": "number",
+      "minimum": 0,
+      "default": 0,
+      "description": "The price of the product"
+    },
+    "visits": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 0,
+      "description": "Number of times the customer has visited"
+    },
+    "message": {
+      "type": "string",
+      "description": "Human-readable response message"
+    }
+  },
+  "required": ["customerId", "price", "visits", "message"],
+  "additionalProperties": false
+}

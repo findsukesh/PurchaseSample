@@ -1,0 +1,25 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PurchaseRequest",
+  "description": "Schema for a purchase request (converted from PurchaseRequest.xsd, namespace http://PurchaseFlow.Schemas.PurchaseRequest)",
+  "type": "object",
+  "properties": {
+    "customerId": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "The unique identifier of the customer"
+    },
+    "productId": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "The unique identifier of the product"
+    },
+    "quantity": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "The quantity to purchase"
+    }
+  },
+  "required": ["customerId", "productId", "quantity"],
+  "additionalProperties": false
+}

@@ -1,0 +1,22 @@
+{
+  "serviceProviderConnections": {
+    "sql": {
+      "parameterValues": {
+        "connectionString": "@appsetting('sql-connection-string')"
+      },
+      "serviceProvider": {
+        "id": "/serviceProviders/sql"
+      },
+      "displayName": "Azure SQL Database"
+    },
+    "serviceBus": {
+      "parameterValues": {
+        "connectionString": "@appsetting('servicebus-connection-string')"
+      },
+      "serviceProvider": {
+        "id": "/serviceProviders/serviceBus"
+      },
+      "displayName": "Azure Service Bus"
+    }
+  }
+}
