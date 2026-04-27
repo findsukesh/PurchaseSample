@@ -1,0 +1,254 @@
+{
+  "definition": {
+    "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+    "contentVersion": "1.0.0.0",
+    "triggers": {
+      "HTTP_Trigger": {
+        "type": "Request",
+        "kind": "Http",
+        "inputs": {
+          "method": "POST",
+          "schema": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "type": "object",
+            "properties": {
+              "customerId": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "The unique identifier of the customer"
+              },
+              "productId": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "The unique identifier of the product"
+              },
+              "quantity": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "The quantity to purchase"
+              }
+            },
+            "required": ["customerId", "productId", "quantity"]
+          }
+        }
+      }
+    },
+    "actions": {
+      "Validate_Customer": {
+        "type": "ServiceProvider",
+        "inputs": {
+          "parameters": {
+            "query": "SELECT CustomerID, CustomerName, Visits FROM dbo.Customers WHERE CustomerID = @CustomerId",
+            "queryParameters": {
+              "CustomerId": "@triggerBody()?['customerId']"
+            }
+          },
+          "serviceProviderConfiguration": {
+            "connectionName": "sql",
+            "operationId": "executeQuery",
+            "serviceProviderId": "/serviceProviders/sql"
+          }
+        },
+        "runAfter": {}
+      },
+      "Check_Customer_Valid": {
+        "type": "If",
+        "expression": {
+          "and": [
+            {
+              "greater": [
+                "@length(body('Validate_Customer')?['resultSets']?['Table1'])",
+                0
+              ]
+            }
+          ]
+        },
+        "actions": {
+          "Get_Product": {
+            "type": "ServiceProvider",
+            "inputs": {
+              "parameters": {
+                "query": "SELECT ProductId, ProductName, Availability, Price FROM dbo.Products WHERE ProductId = @ProductId",
+                "queryParameters": {
+                  "ProductId": "@triggerBody()?['productId']"
+                }
+              },
+              "serviceProviderConfiguration": {
+                "connectionName": "sql",
+                "operationId": "executeQuery",
+                "serviceProviderId": "/serviceProviders/sql"
+              }
+            },
+            "runAfter": {}
+          },
+          "Check_Product_Valid": {
+            "type": "If",
+            "expression": {
+              "and": [
+                {
+                  "greater": [
+                    "@length(body('Get_Product')?['resultSets']?['Table1'])",
+                    0
+                  ]
+                }
+              ]
+            },
+            "actions": {
+              "Check_Product_Availability": {
+                "type": "If",
+                "expression": {
+                  "and": [
+                    {
+                      "greaterOrEquals": [
+                        "@int(body('Get_Product')?['resultSets']?['Table1']?[0]?['Availability'])",
+                        "@int(triggerBody()?['quantity'])"
+                      ]
+                    }
+                  ]
+                },
+                "actions": {
+                  "Compose_Purchase_Response": {
+                    "type": "Compose",
+                    "inputs": {
+                      "customerId": "@triggerBody()?['customerId']",
+                      "price": "@body('Get_Product')?['resultSets']?['Table1']?[0]?['Price']",
+                      "visits": "@body('Validate_Customer')?['resultSets']?['Table1']?[0]?['Visits']",
+                      "message": "Validation Successful"
+                    },
+                    "runAfter": {}
+                  },
+                  "Response_Success": {
+                    "type": "Response",
+                    "kind": "Http",
+                    "inputs": {
+                      "statusCode": 200,
+                      "body": "@outputs('Compose_Purchase_Response')",
+                      "headers": {
+                        "Content-Type": "application/json"
+                      }
+                    },
+                    "runAfter": {
+                      "Compose_Purchase_Response": ["Succeeded"]
+                    }
+                  }
+                },
+                "else": {
+                  "actions": {
+                    "Compose_Product_Unavailable_Error": {
+                      "type": "Compose",
+                      "inputs": {
+                        "Code": "1003",
+                        "Message": "Product not available"
+                      },
+                      "runAfter": {}
+                    },
+                    "Send_Error_To_Service_Bus": {
+                      "type": "ServiceProvider",
+                      "inputs": {
+                        "parameters": {
+                          "entityName": "@appsetting('SERVICEBUS_QUEUE_NAME')",
+                          "message": {
+                            "contentData": "@{base64(string(outputs('Compose_Product_Unavailable_Error')))}",
+                            "contentType": "application/json",
+                            "userProperties": {
+                              "customerId": "@{triggerBody()?['customerId']}",
+                              "productId": "@{triggerBody()?['productId']}",
+                              "quantity": "@{triggerBody()?['quantity']}"
+                            }
+                          }
+                        },
+                        "serviceProviderConfiguration": {
+                          "connectionName": "serviceBus",
+                          "operationId": "sendMessage",
+                          "serviceProviderId": "/serviceProviders/serviceBus"
+                        }
+                      },
+                      "runAfter": {
+                        "Compose_Product_Unavailable_Error": ["Succeeded"]
+                      }
+                    },
+                    "Response_Product_Unavailable": {
+                      "type": "Response",
+                      "kind": "Http",
+                      "inputs": {
+                        "statusCode": 400,
+                        "body": "@outputs('Compose_Product_Unavailable_Error')",
+                        "headers": {
+                          "Content-Type": "application/json"
+                        }
+                      },
+                      "runAfter": {
+                        "Send_Error_To_Service_Bus": ["Succeeded", "Failed"]
+                      }
+                    }
+                  }
+                },
+                "runAfter": {}
+              }
+            },
+            "else": {
+              "actions": {
+                "Compose_Invalid_Product_Error": {
+                  "type": "Compose",
+                  "inputs": {
+                    "Code": "1002",
+                    "Message": "Invalid Product Id"
+                  },
+                  "runAfter": {}
+                },
+                "Response_Invalid_Product": {
+                  "type": "Response",
+                  "kind": "Http",
+                  "inputs": {
+                    "statusCode": 400,
+                    "body": "@outputs('Compose_Invalid_Product_Error')",
+                    "headers": {
+                      "Content-Type": "application/json"
+                    }
+                  },
+                  "runAfter": {
+                    "Compose_Invalid_Product_Error": ["Succeeded"]
+                  }
+                }
+              }
+            },
+            "runAfter": {
+              "Get_Product": ["Succeeded"]
+            }
+          }
+        },
+        "else": {
+          "actions": {
+            "Compose_Invalid_Customer_Error": {
+              "type": "Compose",
+              "inputs": {
+                "Code": "1001",
+                "Message": "Invalid Customer Id"
+              },
+              "runAfter": {}
+            },
+            "Response_Invalid_Customer": {
+              "type": "Response",
+              "kind": "Http",
+              "inputs": {
+                "statusCode": 400,
+                "body": "@outputs('Compose_Invalid_Customer_Error')",
+                "headers": {
+                  "Content-Type": "application/json"
+                }
+              },
+              "runAfter": {
+                "Compose_Invalid_Customer_Error": ["Succeeded"]
+              }
+            }
+          }
+        },
+        "runAfter": {
+          "Validate_Customer": ["Succeeded"]
+        }
+      }
+    },
+    "outputs": {}
+  },
+  "kind": "Stateful"
+}
